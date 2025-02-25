@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
@@ -12,7 +13,6 @@ class Order extends Model
         'customer_id',
         'customer_name',
         'company_id',
-        'step_id',
         'order_date',
         'total_price',
         'notes',

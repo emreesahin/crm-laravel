@@ -23,7 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Route::get('/customers', [CustomerController::class, 'getAllCustomers']);
     // Route::get('/customer/{id}', [CustomerController::class, 'getCustomer']);
     // Route::delete('/customer/{id}', [CustomerController::class, 'deleteCustomer']);
-    Route::post('/create-order', [OrderController::class, 'createOrder']);
+    Route::post('/post-order', [OrderController::class, 'postOrder']);
 
 });
 
