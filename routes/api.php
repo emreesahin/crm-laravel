@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\OrderController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -16,6 +18,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/companies', [CompanyController::class, 'getAllCompanies']);
     Route::get('/company/{id}', [CompanyController::class, 'getCompany']);
     Route::delete('/company/{id}', [CompanyController::class, 'deleteCompany']);
+    Route::post('/create-customer', [CustomerController::class, 'createCustomer']);
+    // Route::post('/update-customer/{id}', [CustomerController::class, 'updateCustomer']);
+    // Route::get('/customers', [CustomerController::class, 'getAllCustomers']);
+    // Route::get('/customer/{id}', [CustomerController::class, 'getCustomer']);
+    // Route::delete('/customer/{id}', [CustomerController::class, 'deleteCustomer']);
+    Route::post('/create-order', [OrderController::class, 'createOrder']);
+
 });
 
 
