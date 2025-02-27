@@ -72,7 +72,6 @@ class OrderController extends Controller
                 'message' => 'Sipariş oluşturuldu',
                 'data' => $order
             ], 201);
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
@@ -82,6 +81,268 @@ class OrderController extends Controller
         }
     }
 
+    public function getOrder(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $id = $request->query('id');
+
+            if ($id !== null) {
+                $order = Order::where('company_id', $user->company_id)->find($id);
+                if ($order) {
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Sipariş bulundu',
+                        'data' => $order
+                    ], 200);
+                } else {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Sipariş bulunamadı',
+                        'data' => []
+                    ], 404);
+                }
+            } else {
+                $orders = Order::where('company_id', $user->company_id)->get();
+
+                foreach ($orders as $order) {
+                    $order->images = json_decode($order->images);
+                    $formattedOrders[] = $this->formatOrder($order);
+                }
+                return response()->json(['status' => true, 'message' => 'Tüm Siparişler', 'data' => $formattedOrders, 200]);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Bir hata oluştu: ' . $e->getMessage(), 'data' => []]);
+        }
+    }
+
+    private function formatOrder($order)
+    {
+        $orderData = $order->toArray();
+        $orderData['customer'] = $order->customer->toArray();
+        unset($orderData['customer_id']);
+        unset($orderData['company_id']);
+
+        if (isset($orderData['step_notes'])) {
+            foreach ($orderData['step_notes'] as &$note) {
+                $note['step_id'] = intval($note['step_id']);
+            }
+        }
+
+        return $orderData;
+    }
+
+    public function getStepNotes(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $step_id = $request->input('step_id');
+
+            $order = Order::where('company_id', $user->company_id)->find($id);
+
+            if (!$order) {
+                response()->json([
+                    'status' => false,
+                    'message' => 'Sipariş bulunamadı',
+                    'data' => []
+                ], 404);
+            }
+
+            if (!$order->step_id) {
+                response()->json([
+                    'status' => false,
+                    'message' => 'Siparişin adımı bulunamadı',
+                    'data' => []
+                ], 404);
+            }
+
+            $filtered_step_notes = array_filter($order->step_notes, function ($note) use ($step_id) {
+                return isset($note['step_id']) && $note['step_id'] == $step_id;
+            });
+
+            $formattedNotes = [];
+            foreach ($filtered_step_notes as $note) {
+                foreach ($note['notes'] as $data) {
+                    if ($user) {
+                        $formattedNotes[] = [
+                            'note' => $data['note'],
+                            'created_at' => $data['created_at'],
+                            'image' => $data['image'],
+                            'employee' => $user,
+                        ];
+                    }
+                }
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Adım notları bulundu',
+                'data' => $formattedNotes
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Bir hata oluştu: ' . $e->getMessage(),
+                'data' => []
+            ]);
+        }
+    }
+
+    public function updateOrder(Request $request, $id)
+    {
+        try {
+
+            $request->validate([
+                'customer_id' => 'required|integer|exists:customers,id',
+                'order_date' => 'required|date',
+                'total_price' => 'required|numeric',
+                'notes' => 'nullable|string',
+                'images' => 'nullable|array',
+                'images.*' => 'nullable|mimes:jpg,jpeg,png,gif',
+                'order_id' => 'required|string|unique:orders,order_id',
+                'step_id' => 'required|integer',
+            ]);
+
+            $user = $request->user();
+            $order = Order::where('company_id', $user->company_id)->find($id);
+
+            if (!$order) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Sipariş bulunamadı',
+                    'data' => []
+                ], 404);
+            }
+            $companyId = $user->company_id;
+
+            $order->customer_id = $request->customer_id;
+            $order->company_id = $companyId;
+
+            if ($request->has('notes')) {
+                $order->notes = $request->notes;
+            }
+
+            if ($request->has('image')) {
+                $file = $request->file('image');
+                $path = $file->store('orders', 'public');
+                $url = asset(Storage::url($path));
+                $order->images = $url;
+            }
+
+            $order->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Sipariş güncellendi',
+                'data' => $order
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Sipariş güncellenirken bir hata oluştu.',
+                'data' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // updateStepNotes
+    public function updateStepNotes(Request $request, $orderId)
+    {
+        try {
+            $user = $request->user();
+
+            $request->validate([
+                'note' => 'required|string',
+                'step_id' => 'required|integer',
+                'image' => 'nullable|mimes:jpg,jpeg,png,gif',
+            ]);
+
+            $order = Order::where('company_id', $user->company_id)->find($orderId);
+
+            if (!$order) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Sipariş bulunamadı',
+                    'data' => []
+                ], 404);
+            }
+
+            $urlStep = $request->query('step');
+            $step_id = $request->input('step_id');
+
+            if ($request->filled('step_id') && $step_id != $urlStep) {
+                $order->step_id = min($step_id, 7);
+            } elseif ($step_id == $urlStep) {
+                $order->step_id = min($order->step_id + 1, 7);
+            }
+
+            // New note create
+
+            $newNote = [
+                'user_id' => Auth::id(),
+                'note' => $request->input('note'),
+                'created_at' => Carbon::now(),
+                'image' => null,
+            ];
+
+            // Image process part
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $path = $file->store('orders', 'public');
+                $url = asset(Storage::url($path));
+                $newNote['image'] = $url;
+            }
+
+            // Step ID control
+            $step_id = $request->filled('step_id') ? $request->input('step_id') : $urlStep;
+
+            // Step notes control
+            $stepNotes = $order->step_notes ?: [];
+
+            // If step notes exist for this step, update it
+            $existingStepIndex = array_search($step_id, array_column($stepNotes, 'step_id'));
+
+            if ($existingStepIndex !== false) {
+                // Step exists, add new note
+                $stepNotes[$existingStepIndex]['notes'][] = $newNote;
+            } else {
+                // Step does not exist, create new step
+                $stepNotes[] = [
+                    'step_id' => $step_id,
+                    'notes' => [$newNote],
+                ];
+            }
+
+            $order->step_notes = $stepNotes;
+            $order->save();
 
 
+            return response()->json([
+                'status' => true,
+                'message' => 'Adım notları güncellendi',
+                'data' => $order
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Adım notları güncellenirken bir hata oluştu.',
+                'data' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
+
+
+
+
+
+
+
+    // addStepNotes
+
+    // deleteOrder
+
+    // getOrdersCount
+
+    // filterOrders
