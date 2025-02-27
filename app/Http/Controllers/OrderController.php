@@ -321,7 +321,7 @@ class OrderController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Adım notları güncellendi',
-                'data' => $order
+                'data' => $stepNotes
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -331,18 +331,160 @@ class OrderController extends Controller
             ], 500);
         }
     }
-}
-
-
-
-
-
-
 
     // addStepNotes
 
-    // deleteOrder
+    public function addStepNotes(Request $request, $orderId)
+    {
+
+        try {
+            $user = $request->user();
+
+            $request->validate([
+                'note' => 'required|string',
+                'step_id' => 'nullable|integer',
+                'image' => 'nullable|mimes:jpg,jpeg,png,gif',
+            ]);
+
+            $order = Order::where('company_id', $user->company_id)->find($orderId);
+
+            if (!$order) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Sipariş bulunamadı',
+                    'data' => []
+                ], 404);
+            }
+
+            // Find the step parameter from url
+
+            $urlStep = $request->query('step');
+
+
+
+            // Create a new note
+
+            $newNote = ([
+                'user_id' => Auth::id(),
+                'note' => $request->input('note'),
+                'created_at' => Carbon::now(),
+                'image' => null,
+            ]);
+
+            // Image process part
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $path = $file->store('orders', 'public');
+                $url = asset(Storage::url($path));
+                $newNote['image'] = $url;
+            }
+
+            $stepId = $urlStep;
+
+            $stepNotes = $order->step_notes ?: [];
+
+            $existingStepIndex = array_search($stepId, array_column($stepNotes, 'step_id'));
+
+            if ($existingStepIndex !== false) {
+                $stepNotes[$existingStepIndex]['notes'][] = $newNote;
+            } else {
+                $stepNotes[] = [
+                    'step_id' => $stepId,
+                    'notes' => [$newNote],
+                ];
+            }
+
+            $order->step_notes = $stepNotes;
+            $order->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Adım notları eklendi',
+                'data' => $stepNotes
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Adım notları eklenirken bir hata oluştu.',
+                'data' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     // getOrdersCount
 
+    public function getOrdersCount(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $orderCount = Order::whereHas('customer_company', function ($query) use ($user) {
+                $query->where('id', $user->company_id);
+            })->where('step_id', '!=', 7)->count();
+
+            $count = Order::whereHas('customer_company', function ($query) use ($user) {
+                $query->where('id', $user->company_id);
+            })->where('step_id', 7)->count();
+
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Sipariş sayısı alındı',
+                'data' => [
+                    'total' => $orderCount,
+                    'completed' => $count
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Sipariş sayısı alınırken bir hata oluştu.',
+                'data' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // filterOrders
+
+    // public function filterOrders(Request $request)
+    // {
+
+    // }
+
+    // deleteOrder
+
+    public function deleteOrder(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $order = Order::where('company_id', $user->company_id)->find($id);
+
+            if (!$order) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Sipariş bulunamadı',
+                    'data' => []
+                ], 404);
+            }
+
+            if ($order->image) {
+                Storage::disk('public')->delete($order->image);
+            }
+
+            $order->delete();
+            return response()->json([
+                'status' => true,
+                'message' => 'Sipariş silindi',
+                'data' => []
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Sipariş silinirken bir hata oluştu.',
+                'data' => $e->getMessage()
+            ], 500);
+        }
+    }
+}

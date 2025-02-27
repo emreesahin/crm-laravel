@@ -84,4 +84,29 @@ class CompanyController extends Controller
 
         return response()->json(['companies' => $companies]);
     }
+
+    public function getCompanyUsers(Request $request)
+    {
+
+        try {
+            $user = $request->user();
+
+            $users = Company::where('company_id', $user->company_id)->where('role', '!=', 2)->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Şirket personel bilgileri başarıyla getirildi.',
+                'data' => [
+                    'users' => $users,
+                    'user' => $user
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Şirket personel bilgileri getirilirken bir hata oluştu.',
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }
