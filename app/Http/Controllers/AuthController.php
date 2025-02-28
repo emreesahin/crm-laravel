@@ -6,9 +6,11 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
+
 class AuthController extends Controller
 {
-    public function register(Request $request){
+    public function register(Request $request)
+    {
 
         $validated = $request->validate([
             'company_id' => 'required|integer',
@@ -41,14 +43,15 @@ class AuthController extends Controller
         ]);
     }
 
-    public function login(Request $request){
+    public function login(Request $request)
+    {
 
         $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
-        if(!Auth::attempt($validated)){
+        if (!Auth::attempt($validated)) {
             return response()->json([
                 'message' => 'Invalid login details',
             ], 401);
@@ -60,12 +63,14 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $user->createToken('API Token')->plainTextToken,
+            'user' => $user,
         ]);
     }
 
-    public function logout(Request $request){
+    public function logout(Request $request)
+    {
 
-        auth()->user()->tokens()->delete();
+        Auth::user()->tokens()->delete();
 
         return response()->json([
             'message' => 'Logged out',
