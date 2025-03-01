@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -81,40 +82,52 @@ class OrderController extends Controller
         }
     }
 
-    public function getOrder(Request $request)
-    {
-        try {
-            $user = $request->user();
-            $id = $request->query('id');
+    public function getOrder(Request $request, $id)
+{
+    try {
+        $user = $request->user();
 
-            if ($id !== null) {
-                $order = Order::where('company_id', $user->company_id)->find($id);
-                if ($order) {
-                    return response()->json([
-                        'status' => true,
-                        'message' => 'Sipariş bulundu',
-                        'data' => $order
-                    ], 200);
-                } else {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Sipariş bulunamadı',
-                        'data' => []
-                    ], 404);
-                }
+        if ($id !== null) {
+            $order = Order::where('company_id', $user->company_id)->find($id);
+            if ($order) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Sipariş bulundu',
+                    'data' => $order
+                ], 200);
             } else {
-                $orders = Order::where('company_id', $user->company_id)->get();
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Sipariş bulunamadı',
+                    'data' => ['error' => $e->getMessage()]
+                ], 404);
 
-                foreach ($orders as $order) {
-                    $order->images = json_decode($order->images);
-                    $formattedOrders[] = $this->formatOrder($order);
-                }
-                return response()->json(['status' => true, 'message' => 'Tüm Siparişler', 'data' => $formattedOrders, 200]);
             }
-        } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Bir hata oluştu: ' . $e->getMessage(), 'data' => []]);
+        } else {
+
+            $orders = Order::where('company_id', $user->company_id)->get();
+
+            $formattedOrders = [];
+
+            foreach ($orders as $order) {
+                $order->images = json_decode($order->images, true);
+                $formattedOrders[] = $this->formatOrder($order);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Tüm Siparişler',
+                'data' => $formattedOrders
+            ], 200);
         }
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Bir hata oluştu: ' . $e->getMessage(),
+            'data' => []
+        ], 500);
     }
+}
 
     private function formatOrder($order)
     {
@@ -191,52 +204,68 @@ class OrderController extends Controller
     public function updateOrder(Request $request, $id)
     {
         try {
-
-            $request->validate([
-                'customer_id' => 'required|integer|exists:customers,id',
-                'order_date' => 'required|date',
-                'total_price' => 'required|numeric',
-                'notes' => 'nullable|string',
-                'images' => 'nullable|array',
-                'images.*' => 'nullable|mimes:jpg,jpeg,png,gif',
-                'order_id' => 'required|string|unique:orders,order_id',
-                'step_id' => 'required|integer',
-            ]);
-
-            $user = $request->user();
-            $order = Order::where('company_id', $user->company_id)->find($id);
-
+            // Veritabanından siparişi bul
+            $order = Order::find($id);
             if (!$order) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Sipariş bulunamadı',
-                    'data' => []
-                ], 404);
-            }
-            $companyId = $user->company_id;
-
-            $order->customer_id = $request->customer_id;
-            $order->company_id = $companyId;
-
-            if ($request->has('notes')) {
-                $order->notes = $request->notes;
+                    'message' => 'Sipariş bulunamadı.',
+                ]);
             }
 
-            if ($request->has('image')) {
-                $file = $request->file('image');
-                $path = $file->store('orders', 'public');
-                $url = asset(Storage::url($path));
-                $order->images = $url;
+            // Gelen verileri doğrula
+            $validator = Validator::make($request->all(), [
+                'customer_id' => 'required|integer',
+                'order_date' => 'required|date',
+                'total_price' => 'required|numeric',
+                'notes' => 'nullable|string',
+                'order_id' => 'required|string',
+                'step_id' => 'required|integer',
+                'images' => 'nullable|array',
+                'images.*' => 'nullable|file|mimes:jpg,jpeg,png,gif',  // İmaj dosya türlerini kontrol et
+            ]);
+
+            // Eğer doğrulama hatalıysa, hata mesajını döndür
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Veriler geçersiz.',
+                    'errors' => $validator->errors(),
+                ]);
             }
 
+            // Sipariş güncelleniyor
+            $order->customer_id = $request->input('customer_id');
+            $order->order_date = $request->input('order_date');
+            $order->total_price = $request->input('total_price');
+            $order->notes = $request->input('notes');
+            $order->order_id = $request->input('order_id');
+            $order->step_id = $request->input('step_id');
+
+            // Dosya var mı kontrol et ve yükle
+            if ($request->hasFile('images')) {
+                $imagePaths = [];
+                foreach ($request->file('images') as $image) {
+                    $imagePath = $image->store('order_images');  // Dosyayı 'order_images' klasörüne kaydet
+                    $imagePaths[] = $imagePath;
+                }
+                $order->images = json_encode($imagePaths);  // Dosya yollarını JSON olarak kaydet
+            }
+
+            // Siparişi güncelle
             $order->save();
 
             return response()->json([
                 'status' => true,
-                'message' => 'Sipariş güncellendi',
+                'message' => 'Sipariş başarıyla güncellendi.',
                 'data' => $order
-            ], 200);
+            ]);
         } catch (\Exception $e) {
+            // Hata mesajını logla
+            Log::error('Order update error: ' . $e->getMessage(), [
+                'stack' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => 'Sipariş güncellenirken bir hata oluştu.',
@@ -244,6 +273,7 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
 
     // updateStepNotes
     public function updateStepNotes(Request $request, $orderId)
@@ -421,11 +451,11 @@ class OrderController extends Controller
             $user = $request->user();
 
             $orderCount = Order::whereHas('customer_company', function ($query) use ($user) {
-                $query->where('id', $user->company_id);
+                $query->where('companies.id', $user->company_id);
             })->where('step_id', '!=', 7)->count();
 
             $count = Order::whereHas('customer_company', function ($query) use ($user) {
-                $query->where('id', $user->company_id);
+                $query->where('companies.id', $user->company_id);
             })->where('step_id', 7)->count();
 
 

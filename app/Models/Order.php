@@ -24,4 +24,11 @@ class Order extends Model
     public function customer(){
         return $this->belongsTo(Customer::class, 'customer_id', 'id');
     }
+
+    public function customer_company()
+    {
+        return $this->hasOneThrough(Company::class, Customer::class, 'id', 'id', 'customer_id', 'company_id')
+            ->select('companies.id'); // Burada company'nin id'si seçiliyor
+    }
+
 }

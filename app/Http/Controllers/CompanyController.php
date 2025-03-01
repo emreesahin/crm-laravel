@@ -9,42 +9,53 @@ class CompanyController extends Controller
 {
     public function createCompany(Request $request)
     {
-        $validated = $request->validate([
-            'company_name' => 'required|string',
-            'contact_name' => 'required|string',
-            'contact_phone' => 'required|string',
-            'contact_email' => 'required|email',
-        ]);
+        try{
+            $validated = $request->validate([
+                'company_name' => 'required|string',
+                'contact_name' => 'required|string',
+                'contact_phone' => 'required|string',
+                'contact_email' => 'required|email',
+            ]);
 
-        $company = Company::create([
-            'company_name' => $validated['company_name'],
-            'contact_name' => $validated['contact_name'],
-            'contact_phone' => $validated['contact_phone'],
-            'contact_email' => $validated['contact_email'],
-        ]);
+            $company = Company::create([
+                'company_name' => $validated['company_name'],
+                'contact_name' => $validated['contact_name'],
+                'contact_phone' => $validated['contact_phone'],
+                'contact_email' => $validated['contact_email'],
+            ]);
 
-        return response()->json([
-            'message' => 'Company created successfully',
-            'company' => $company
-        ]);
+            return response()->json([
+                'message' => 'Company created successfully',
+                'company' => $company
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Şirket oluşturulurken bir hata oluştu.',
+                'error' => $e->getMessage(),
+            ]);
+        }
+
     }
 
-    public function updateCompany(Request $request)
-    {
-        $validated = $request->validate([
-            'company_name' => 'required|string',
-            'id' => 'required|integer|exists:companies,id',
-            'contact_name' => 'required|string',
-            'contact_phone' => 'required|string',
-            'contact_email' => 'required|email',
-        ]);
-
-        $company = Company::find($validated['id']);
+    public function updateCompany(Request $request, $id)
+{
+    try {
+        $company = Company::find($id);
 
         if (!$company) {
             return response()->json(['message' => 'Company not found'], 404);
         }
 
+        // Validasyon
+        $validated = $request->validate([
+            'company_name' => 'required|string',
+            'contact_name' => 'required|string',
+            'contact_phone' => 'required|string',
+            'contact_email' => 'required|email',
+        ]);
+
+        // Güncelleme
         $company->update([
             'company_name' => $validated['company_name'],
             'contact_name' => $validated['contact_name'],
@@ -56,15 +67,45 @@ class CompanyController extends Controller
             'message' => 'Company updated successfully',
             'company' => $company
         ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Şirket güncellenirken bir hata oluştu.',
+            'error' => $e->getMessage(),
+        ]);
     }
+}
 
-    public function deleteCompany($id)
-    {
-        $company = Company::findOrFail($id);
+
+public function deleteCompany($id)
+{
+    try {
+        $company = Company::find($id);
+
+
+        if (!$company) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Company not found.',
+            ], 404);
+        }
+
+
         $company->delete();
 
-        return response()->json(['message' => 'Company deleted successfully.']);
+        return response()->json([
+            'status' => true,
+            'message' => 'Company deleted successfully.',
+        ], 204);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Company could not be deleted.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
 
 
     public function getCompany($company_id)

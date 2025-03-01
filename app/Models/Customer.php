@@ -32,7 +32,7 @@ class Customer extends Model
         return $this->belongsTo(Company::class, 'company_id', 'id');
     }
 
-    public function order()
+    public function orders()
     {
         return $this->hasMany(Order::class, 'customer_id', 'id');
     }
