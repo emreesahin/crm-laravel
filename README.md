@@ -1,66 +1,183 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+Laravel REST API - CRUD Operations
+Technologies Used
+PHP
+Composer
+Laravel
+Postman
+MySQL
+API Overview
+This Laravel REST API supports various CRUD operations for managing Companies, Users (Employees), Customers, and Orders. It also provides features like User Authentication, Activity Logs, and Search Functionality.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Core Features
+User Management
+Company Management
+Customer Management
+Order Management
+Authentication
+Search Functionality
+Endpoints
+Companies
+1. Get All Companies
+GET /api/companies
+Retrieve all companies.
+2. Get Single Company
+GET /api/companies/{company_id}
+Retrieve a specific company by ID.
+3. Add a Company
+POST /api/companies
+Create a new company.
+Sample Data:
+json
+Kopyala
+Düzenle
+{
+  "company_name": "ABC Corp",
+  "contact_name": "John Doe",
+  "contact_phone": "123-456-7890",
+  "contact_email": "john@abc.com"
+}
+4. Update a Company
+PUT /api/companies/{company_id}
+Update an existing company.
+5. Delete a Company
+DELETE /api/companies/{company_id}
+Delete a company by ID.
+Users (Employees)
+1. Get All Users
+GET /api/users
+Retrieve all users.
+2. Get Single User
+GET /api/users/{user_id}
+Retrieve a specific user by ID.
+3. Add a User
+POST /api/users
+Add a new user to the system.
+Sample Data:
+json
+Kopyala
+Düzenle
+{
+  "name": "Jane",
+  "surname": "Doe",
+  "email": "jane@company.com",
+  "role": "employee",
+  "company_id": 1
+}
+4. Update a User
+PUT /api/users/{user_id}
+Update user information.
+5. Delete a User
+DELETE /api/users/{user_id}
+Remove a user from the system.
+6. Get User Activity Logs
+GET /api/users/{user_id}/activity_logs
+Retrieve activity logs for a specific user.
+7. Get User's Orders
+GET /api/users/{user_id}/orders
+Retrieve all orders placed by a specific user.
+Customers
+1. Get All Customers
+GET /api/customers
+Retrieve a list of all customers.
+2. Get Single Customer
+GET /api/customers/{customer_id}
+Retrieve a specific customer by ID.
+3. Add a Customer
+POST /api/customers
+Create a new customer.
+Sample Data:
+json
+Kopyala
+Düzenle
+{
+  "first_name": "Michael",
+  "last_name": "Smith",
+  "email": "michael@customer.com",
+  "phone": "987-654-3210"
+}
+4. Update a Customer
+PUT /api/customers/{customer_id}
+Update customer details.
+5. Delete a Customer
+DELETE /api/customers/{customer_id}
+Remove a customer from the system.
+Orders
+1. Get Orders by Customer
+GET /api/customers/{customer_id}/orders
+Retrieve all orders for a specific customer.
+2. Create an Order
+POST /api/orders
+Add a new order for a customer.
+Sample Data:
+json
+Kopyala
+Düzenle
+{
+  "customer_id": 1,
+  "order_date": "2025-03-04",
+  "total_amount": 200,
+  "status": "pending"
+}
+Authentication
+1. Login
+POST /api/login
+Retrieve JWT token for authentication.
+Sample Data:
+json
+Kopyala
+Düzenle
+{
+  "email": "user@example.com",
+  "password": "yourpassword"
+}
+2. Token Validation
+GET /api/user
+Validate the JWT token and retrieve user details.
+Search Functionality
+1. Search Users
+GET /api/users/search
+Search for users by name, email, or other parameters.
+Sample Query:
+bash
+Kopyala
+Düzenle
+/api/users/search?name=John
+Postman Collection
+To test the endpoints, you can use Postman. Below are examples of how to make requests:
 
-## About Laravel
-
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Example 1: Create a Company
+Method: POST
+URL: http://localhost:8000/api/companies
+Body:
+json
+Kopyala
+Düzenle
+{
+  "company_name": "XYZ Ltd",
+  "contact_name": "Alice Cooper",
+  "contact_phone": "111-222-3333",
+  "contact_email": "alice@xyz.com"
+}
+Example 2: Get Orders by Customer
+Method: GET
+URL: http://localhost:8000/api/customers/1/orders
+Example 3: Update a User
+Method: PUT
+URL: http://localhost:8000/api/users/1
+Body:
+json
+Kopyala
+Düzenle
+{
+  "name": "Updated Name",
+  "surname": "Updated Surname",
+  "role": "manager"
+}
+Example 4: Delete a Customer
+Method: DELETE
+URL: http://localhost:8000/api/customers/1
+Notes:
+JWT token is required for authentication.
+All POST and PUT requests must include a JSON body.
+Additional features such as Order Management, User Activity Logs, and Search Functionality are available.
+This README provides an overview of the available API endpoints for managing Companies, Users, Customers, and Orders, along with example Postman queries to test them. You can easily interact with the system via Postman or any other API testing tool.
