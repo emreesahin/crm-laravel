@@ -21,14 +21,19 @@ class Order extends Model
         'step_id',
     ];
 
-    public function customer(){
+    protected $casts = [
+        'notes' => 'array',  // JSON olarak saklanan `notes` alanı diziye çevrilecek
+        'images' => 'array', // Eğer images JSON olarak saklanıyorsa
+    ];
+
+    public function customer()
+    {
         return $this->belongsTo(Customer::class, 'customer_id', 'id');
     }
 
     public function customer_company()
     {
         return $this->hasOneThrough(Company::class, Customer::class, 'id', 'id', 'customer_id', 'company_id')
-            ->select('companies.id'); // Burada company'nin id'si seçiliyor
+            ->select('companies.id');
     }
-
 }

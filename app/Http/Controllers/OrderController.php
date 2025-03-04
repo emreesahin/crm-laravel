@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+
 
 class OrderController extends Controller
 {
@@ -23,7 +25,7 @@ class OrderController extends Controller
                 'total_price' => 'required|numeric',
                 'notes' => 'nullable|string',
                 'images' => 'nullable|array',
-                'images.*' => 'nullable|mimes:jpg,jpeg,png,gif',  // Dosya tipini kontrol et
+                'images.*' => 'nullable|mimes:jpg,jpeg,png,gif',
                 'order_id' => 'required|string|unique:orders,order_id',
                 'step_id' => 'required|integer',
             ]);
@@ -51,18 +53,17 @@ class OrderController extends Controller
             $order->order_id = $request->order_id;
             $order->step_id = $request->step_id;
 
-            // Dosyaların yüklendiğini kontrol et
+
             if ($request->has('images') && is_array($request->images)) {
                 $imageUrls = [];
 
-                // Her bir dosyayı yükle
+
                 foreach ($request->file('images') as $file) {
-                    $path = $file->store('orders', 'public'); // storage/app/public/orders
-                    $url = asset(Storage::url($path)); // URL
+                    $path = $file->store('orders', 'public');
+                    $url = asset(Storage::url($path));
                     $imageUrls[] = $url;
                 }
 
-                // images kolonunu JSON formatında veritabanına kaydedilecek
                 $order->images = json_encode($imageUrls);
             }
 
@@ -149,62 +150,57 @@ class OrderController extends Controller
     {
         try {
             $user = $request->user();
-            $step_id = $request->input('step_id');
+
 
             $order = Order::where('company_id', $user->company_id)->find($id);
 
             if (!$order) {
-                response()->json([
+                return response()->json([
                     'status' => false,
                     'message' => 'Sipariş bulunamadı',
-                    'data' => []
                 ], 404);
             }
 
-            if (!$order->step_id) {
-                response()->json([
+
+            $stepId = $request->query('step');
+
+
+            if (!$stepId) {
+                return response()->json([
                     'status' => false,
-                    'message' => 'Siparişin adımı bulunamadı',
-                    'data' => []
-                ], 404);
+                    'message' => 'Geçerli bir adım ID gerekli',
+                ], 422);
             }
 
-            $filtered_step_notes = array_filter($order->step_notes, function ($note) use ($step_id) {
-                return isset($note['step_id']) && $note['step_id'] == $step_id;
-            });
 
-            $formattedNotes = [];
-            foreach ($filtered_step_notes as $note) {
-                foreach ($note['notes'] as $data) {
-                    if ($user) {
-                        $formattedNotes[] = [
-                            'note' => $data['note'],
-                            'created_at' => $data['created_at'],
-                            'image' => $data['image'],
-                            'employee' => $user,
-                        ];
-                    }
-                }
-            }
+            $stepNotesData = collect($order->notes)->firstWhere('step_id', (int)$stepId);
+
+
+            $stepNotes = $stepNotesData ? $stepNotesData['notes'] : [];
 
             return response()->json([
                 'status' => true,
-                'message' => 'Adım notları bulundu',
-                'data' => $formattedNotes
+                'message' => 'Adım notları getirildi.',
+                'data' => $stepNotes,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Bir hata oluştu: ' . $e->getMessage(),
-                'data' => []
-            ]);
+                'message' => 'Adım notları getirilirken bir hata oluştu.',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
         }
     }
+
+
 
     public function updateOrder(Request $request, $id)
     {
         try {
-            // Veritabanından siparişi bul
+
             $order = Order::find($id);
             if (!$order) {
                 return response()->json([
@@ -213,19 +209,18 @@ class OrderController extends Controller
                 ]);
             }
 
-            // Gelen verileri doğrula
+
             $validator = Validator::make($request->all(), [
                 'customer_id' => 'required|integer',
                 'order_date' => 'required|date',
                 'total_price' => 'required|numeric',
                 'notes' => 'nullable|string',
-                'order_id' => 'required|string',
                 'step_id' => 'required|integer',
                 'images' => 'nullable|array',
-                'images.*' => 'nullable|file|mimes:jpg,jpeg,png,gif',  // İmaj dosya türlerini kontrol et
+                'images.*' => 'nullable|file|mimes:jpg,jpeg,png,gif',
             ]);
 
-            // Eğer doğrulama hatalıysa, hata mesajını döndür
+
             if ($validator->fails()) {
                 return response()->json([
                     'status' => false,
@@ -234,25 +229,23 @@ class OrderController extends Controller
                 ]);
             }
 
-            // Sipariş güncelleniyor
+
             $order->customer_id = $request->input('customer_id');
             $order->order_date = $request->input('order_date');
             $order->total_price = $request->input('total_price');
             $order->notes = $request->input('notes');
-            $order->order_id = $request->input('order_id');
             $order->step_id = $request->input('step_id');
 
-            // Dosya var mı kontrol et ve yükle
+
             if ($request->hasFile('images')) {
                 $imagePaths = [];
                 foreach ($request->file('images') as $image) {
-                    $imagePath = $image->store('order_images');  // Dosyayı 'order_images' klasörüne kaydet
+                    $imagePath = $image->store('order_images');
                     $imagePaths[] = $imagePath;
                 }
-                $order->images = json_encode($imagePaths);  // Dosya yollarını JSON olarak kaydet
-            }
+                $order->images = json_encode($imagePaths);
 
-            // Siparişi güncelle
+
             $order->save();
 
             return response()->json([
@@ -260,8 +253,8 @@ class OrderController extends Controller
                 'message' => 'Sipariş başarıyla güncellendi.',
                 'data' => $order
             ]);
-        } catch (\Exception $e) {
-            // Hata mesajını logla
+        } } catch (\Exception $e) {
+
             Log::error('Order update error: ' . $e->getMessage(), [
                 'stack' => $e->getTraceAsString(),
             ]);
@@ -297,25 +290,21 @@ class OrderController extends Controller
                 ], 404);
             }
 
-            $urlStep = $request->query('step');
+
+            $stepNotes = json_decode($order->step_notes, true) ?: [];
+
+
             $step_id = $request->input('step_id');
+            $note = $request->input('note');
 
-            if ($request->filled('step_id') && $step_id != $urlStep) {
-                $order->step_id = min($step_id, 7);
-            } elseif ($step_id == $urlStep) {
-                $order->step_id = min($order->step_id + 1, 7);
-            }
-
-            // New note create
 
             $newNote = [
                 'user_id' => Auth::id(),
-                'note' => $request->input('note'),
+                'note' => $note,
                 'created_at' => Carbon::now(),
                 'image' => null,
             ];
 
-            // Image process part
 
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
@@ -324,29 +313,21 @@ class OrderController extends Controller
                 $newNote['image'] = $url;
             }
 
-            // Step ID control
-            $step_id = $request->filled('step_id') ? $request->input('step_id') : $urlStep;
-
-            // Step notes control
-            $stepNotes = $order->step_notes ?: [];
-
-            // If step notes exist for this step, update it
             $existingStepIndex = array_search($step_id, array_column($stepNotes, 'step_id'));
 
             if ($existingStepIndex !== false) {
-                // Step exists, add new note
+
                 $stepNotes[$existingStepIndex]['notes'][] = $newNote;
             } else {
-                // Step does not exist, create new step
+
                 $stepNotes[] = [
                     'step_id' => $step_id,
                     'notes' => [$newNote],
                 ];
             }
 
-            $order->step_notes = $stepNotes;
+            $order->step_notes = json_encode($stepNotes);
             $order->save();
-
 
             return response()->json([
                 'status' => true,
@@ -363,18 +344,26 @@ class OrderController extends Controller
     }
 
     // addStepNotes
-
     public function addStepNotes(Request $request, $orderId)
     {
-
         try {
             $user = $request->user();
 
-            $request->validate([
+
+            $validator = Validator::make($request->all(), [
                 'note' => 'required|string',
-                'step_id' => 'nullable|integer',
-                'image' => 'nullable|mimes:jpg,jpeg,png,gif',
+                'step_id' => 'required|integer',
+                'image' => 'nullable|mimes:jpg,jpeg,png,gif|max:2048',
             ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Geçersiz giriş',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
 
             $order = Order::where('company_id', $user->company_id)->find($orderId);
 
@@ -382,37 +371,36 @@ class OrderController extends Controller
                 return response()->json([
                     'status' => false,
                     'message' => 'Sipariş bulunamadı',
-                    'data' => []
                 ], 404);
             }
 
-            // Find the step parameter from url
-
-            $urlStep = $request->query('step');
+            $stepId = $request->input('step_id');
 
 
-
-            // Create a new note
-
-            $newNote = ([
-                'user_id' => Auth::id(),
+            $newNote = [
+                'user_id' => $user->id,
                 'note' => $request->input('note'),
-                'created_at' => Carbon::now(),
+                'created_at' => now(),
                 'image' => null,
-            ]);
+            ];
 
-            // Image process part
 
             if ($request->hasFile('image')) {
-                $file = $request->file('image');
-                $path = $file->store('orders', 'public');
-                $url = asset(Storage::url($path));
-                $newNote['image'] = $url;
+                try {
+                    $file = $request->file('image');
+                    $path = $file->store('orders', 'public');
+                    $newNote['image'] = asset(Storage::url($path));
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Resim yüklenirken hata oluştu.',
+                        'error' => $e->getMessage(),
+                    ], 500);
+                }
             }
 
-            $stepId = $urlStep;
 
-            $stepNotes = $order->step_notes ?: [];
+            $stepNotes = $order->notes ?? [];
 
             $existingStepIndex = array_search($stepId, array_column($stepNotes, 'step_id'));
 
@@ -425,22 +413,29 @@ class OrderController extends Controller
                 ];
             }
 
-            $order->step_notes = $stepNotes;
+
+            $order->notes = $stepNotes;
             $order->save();
 
             return response()->json([
                 'status' => true,
-                'message' => 'Adım notları eklendi',
-                'data' => $stepNotes
+                'message' => 'Adım notları başarıyla eklendi.',
+                'data' => $stepNotes,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Adım notları eklenirken bir hata oluştu.',
-                'data' => $e->getMessage()
+                'message' => 'Bir hata oluştu.',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
         }
+
     }
+
+
 
 
     // getOrdersCount
@@ -518,3 +513,4 @@ class OrderController extends Controller
         }
     }
 }
+

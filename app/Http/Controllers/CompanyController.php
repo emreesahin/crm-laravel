@@ -47,7 +47,7 @@ class CompanyController extends Controller
             return response()->json(['message' => 'Company not found'], 404);
         }
 
-        // Validasyon
+
         $validated = $request->validate([
             'company_name' => 'required|string',
             'contact_name' => 'required|string',
@@ -55,7 +55,7 @@ class CompanyController extends Controller
             'contact_email' => 'required|email',
         ]);
 
-        // Güncelleme
+
         $company->update([
             'company_name' => $validated['company_name'],
             'contact_name' => $validated['contact_name'],

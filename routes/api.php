@@ -7,6 +7,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\MemberController;
 
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -32,13 +33,24 @@ Route::middleware('auth:sanctum')->group(function () {
     //Order
     Route::post('/post-order', [OrderController::class, 'postOrder']);
     Route::get('/order/{id}', [OrderController::class, 'getOrder']);
-    Route::get('/step-order/{id}', [OrderController::class, 'getStepNotes']);
+    Route::get('/step-notes-order/{id}', [OrderController::class, 'getStepNotes']);
     Route::put('/update-order/{id}', [OrderController::class, 'updateOrder']);
     Route::delete('/delete-order/{id}', [OrderController::class, 'deleteOrder']);
     Route::get('orders-count', [OrderController::class, 'getOrdersCount']);
-    Route::post('/step-notes-order/{id}', [OrderController::class, 'addStepNote']);
-    // Route::delete('/step-order/{id}', [OrderController::class, 'deleteStepNote']);
-    // Route::put('/step-order/{id}', [OrderController::class, 'updateStepNote']);
+    Route::post('/step-notes-order/{id}', [OrderController::class, 'addStepNotes']);
+    Route::put('/step-notes-order/{id}', [OrderController::class, 'updateStepNotes']);
+
+    //Member
+    Route::get('members', [MemberController::class, 'getMembers']);
+    Route::get('members/{id}', [MemberController::class, 'getMembers']);
+    Route::get('current-member', [MemberController::class, 'getCurrentMember']);
+    Route::post('members/admin', [MemberController::class, 'createAdmin']);
+    Route::post('members', [MemberController::class, 'createMember']);
+    Route::put('members/{id}', [MemberController::class, 'updateMember']);
+    Route::delete('members/{id}', [MemberController::class, 'deleteMember']);
+    Route::get('members/{id}/summary', [MemberController::class, 'getMemberSummary']);
+
+
 });
 
 

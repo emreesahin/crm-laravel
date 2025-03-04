@@ -95,10 +95,10 @@ class CustomerController extends Controller
         try {
             $user = $request->user();
 
-            // Kullanıcının bağlı olduğu şirketin tüm müşterilerini al
+
             $customers = Customer::where('company_id', $user->company_id)->get();
 
-            // Her bir müşteri için aktif ve tamamlanmış sipariş sayısını hesapla
+
             foreach ($customers as $customer) {
                 $customer->active_order_count = $customer->orders()->where('step_id', '!=', 7)->count();
                 $customer->completed_order_count = $customer->orders()->where('step_id', 7)->count();
@@ -106,7 +106,7 @@ class CustomerController extends Controller
                 $customer->completed_orders = $this->getCustomerOrders($customer, 'completed');
             }
 
-            // Verileri response olarak döndür
+
             $responseData = $customers->map(function ($customer) {
                 return [
                     'id' => $customer->id,
